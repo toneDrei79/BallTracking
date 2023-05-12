@@ -2,3 +2,5 @@ python/Data/*
 python/images/*
 python/data.csv
 python/Figure_i.png
+.DS_Store
+*/.DS_Store
