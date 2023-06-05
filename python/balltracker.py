@@ -123,7 +123,7 @@ def main(args):
                 # Draw a circle around the detected object
                 cv2.circle(frame, (int(center_x), int(center_y)), int(radius), (0, 255, 0), 2)
 
-                x, y, z = estimate_position(center_x, center_y, radius, frame.shape[:2], args.path, params)
+                x, y, z = estimate_position(center_x, center_y, radius, params)
                 
                 send_data((x,y,z))
 
