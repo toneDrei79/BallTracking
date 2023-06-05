@@ -21,13 +21,13 @@ public class Tracker : MonoBehaviour
         {
             coord = ReadData(coordFilePath);
         }
-        catch (Exception e)
+        catch // (Exception e)
         {
-            Debug.Log(e);
+            // Debug.Log(e);
         }
 
         // convert global coordinate into headset coordinate
-        this.transform.position = camear.InverseTransformPoint(coord);
+        this.transform.position = camera.InverseTransformPoint(coord);
     }
 
     Vector3 ReadData(string _filePath)
@@ -42,9 +42,9 @@ public class Tracker : MonoBehaviour
             z = float.Parse(_data[2]);
             return new Vector3(x, y, z);
         }
-        catch (Exception e)
+        catch // (Exception e)
         {
-            Debug.Log(e);
+            // Debug.Log(e);
             return coord; // don't update the coordinate
         }
     }

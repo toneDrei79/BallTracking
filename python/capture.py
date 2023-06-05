@@ -16,7 +16,7 @@ xoutRgb = pipeline.create(dai.node.XLinkOut)
 xoutRgb.setStreamName("rgb")
 
 # Properties
-camRgb.setPreviewSize(1080, 1080)
+camRgb.setPreviewSize(1920, 1080)
 camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
 camRgb.setInterleaved(False)
 camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
@@ -40,10 +40,11 @@ with dai.Device(pipeline) as device:
     def displayFrame(name, frame):
         cv2.imshow(name, frame)
     
-    def capture(frame):
-        cv2.imwrite('images/001.png', frame)
+    def capture(frame, i):
+        cv2.imwrite(f'images/{i:03}.png', frame)
     
     start_time = time.time()
+    i = 0
     while True:
         inRgb = qRgb.tryGet()
 
@@ -55,8 +56,11 @@ with dai.Device(pipeline) as device:
 
         elapsed_time = int(time.time() - start_time)
         if elapsed_time > 10:
-            capture(frame)
-            break
+            capture(frame, i)
+            print('captured')
+            start_time = time.time()
+            i += 1
+            # break
         
         if cv2.waitKey(1) == ord('q'):
             break

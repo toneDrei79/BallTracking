@@ -1,5 +1,8 @@
 python/Data/*
+python/data*
+python/*png
 python/images/*
+python/_images/*
 python/data.csv
 python/Figure_1.png
 .DS_Store
