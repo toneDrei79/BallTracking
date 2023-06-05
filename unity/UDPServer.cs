@@ -39,6 +39,7 @@ public class UDPServer : MonoBehaviour
                 float.TryParse(coords[2], NumberStyles.Any, CultureInfo.InvariantCulture, out float z))
             {
                 this.transform.position = new Vector3(x, y, z);
+                // this.transform.position = camera.InverseTransformPoint(new Vector3(x, y, z));
             }
         }
     }
