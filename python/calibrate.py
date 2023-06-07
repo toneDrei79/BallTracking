@@ -27,58 +27,90 @@ def get_args():
 def capture(args, distances=[0.4, 0.6, 0.8, 1.0, 1.2, 1.5, 2.0, 2.5, 3.0]):
     os.makedirs(args.datadir, exist_ok=True)
 
-    # Create pipeline
-    pipeline = dai.Pipeline()
 
-    # Define sources and outputs
-    camRgb = pipeline.create(dai.node.ColorCamera)
-    xoutRgb = pipeline.create(dai.node.XLinkOut)
-    xoutRgb.setStreamName("rgb")
+    cap = cv2.VideoCapture(0)
 
-    # Properties
-    camRgb.setPreviewSize(args.resolution_x, args.resolution_y)
-    camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
-    camRgb.setInterleaved(False)
-    camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
-    camRgb.setFps(30)
-
-    # Linking
-    camRgb.preview.link(xoutRgb.input)
-
-    # Connect to device and start pipeline
-    with dai.Device(pipeline) as device:
-
-        def displayFrame(name, frame):
+    def displayFrame(name, frame):
             cv2.imshow(name, frame)
+    
+    def save(frame, dis):
+        path = os.path.join(args.datadir, f'images/{int(dis*10):02d}.png')
+        cv2.imwrite(path, frame)
+        with open(os.path.join(args.datadir, 'data.csv'), 'a') as f:
+            f.write(f'{path} {dis:.3f}\n')
+        print(f'captured {dis:.3f} m')
+    
+    start_time = time.time()
+    i = 0
+    while i < len(distances):
+        ret, frame = cap.read()
+        if not ret:
+            break
+        displayFrame("rgb", frame)
+
+        elapsed_time = int(time.time() - start_time)
+        if elapsed_time > 5:
+            os.makedirs(os.path.join(args.datadir, 'images/'), exist_ok=True)
+            save(frame, distances[i])
+            start_time = time.time()
+            i += 1
         
-        def save(frame, dis):
-            path = os.path.join(args.datadir, f'images/{int(dis*10):02d}.png')
-            cv2.imwrite(path, frame)
-            with open(os.path.join(args.datadir, 'data.csv'), 'a') as f:
-                f.write(f'{path} {dis:.3f}\n')
-            print(f'captured {dis:.3f} m')
+        if cv2.waitKey(1) == ord('q'):
+            break
 
-        # Output queues will be used to get the rgb frames and nn data from the outputs defined above
-        qRgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
 
-        start_time = time.time()
-        i = 0
-        while i < len(distances):
-            inRgb = qRgb.tryGet()
-            if inRgb is None:
-                continue
-            frame = inRgb.getCvFrame()
-            displayFrame("rgb", frame)
+    # # Create pipeline
+    # pipeline = dai.Pipeline()
 
-            elapsed_time = int(time.time() - start_time)
-            if elapsed_time > 5:
-                os.makedirs(os.path.join(args.datadir, 'images/'), exist_ok=True)
-                save(frame, distances[i])
-                start_time = time.time()
-                i += 1
+    # # Define sources and outputs
+    # camRgb = pipeline.create(dai.node.ColorCamera)
+    # xoutRgb = pipeline.create(dai.node.XLinkOut)
+    # xoutRgb.setStreamName("rgb")
+
+    # # Properties
+    # camRgb.setPreviewSize(args.resolution_x, args.resolution_y)
+    # camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
+    # camRgb.setInterleaved(False)
+    # camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
+    # camRgb.setFps(30)
+
+    # # Linking
+    # camRgb.preview.link(xoutRgb.input)
+
+    # # Connect to device and start pipeline
+    # with dai.Device(pipeline) as device:
+
+    #     def displayFrame(name, frame):
+    #         cv2.imshow(name, frame)
+        
+    #     def save(frame, dis):
+    #         path = os.path.join(args.datadir, f'images/{int(dis*10):02d}.png')
+    #         cv2.imwrite(path, frame)
+    #         with open(os.path.join(args.datadir, 'data.csv'), 'a') as f:
+    #             f.write(f'{path} {dis:.3f}\n')
+    #         print(f'captured {dis:.3f} m')
+
+    #     # Output queues will be used to get the rgb frames and nn data from the outputs defined above
+    #     qRgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
+
+    #     start_time = time.time()
+    #     i = 0
+    #     while i < len(distances):
+    #         inRgb = qRgb.tryGet()
+    #         if inRgb is None:
+    #             continue
+    #         frame = inRgb.getCvFrame()
+    #         displayFrame("rgb", frame)
+
+    #         elapsed_time = int(time.time() - start_time)
+    #         if elapsed_time > 5:
+    #             os.makedirs(os.path.join(args.datadir, 'images/'), exist_ok=True)
+    #             save(frame, distances[i])
+    #             start_time = time.time()
+    #             i += 1
             
-            if cv2.waitKey(1) == ord('q'):
-                break
+    #         if cv2.waitKey(1) == ord('q'):
+    #             break
 
         cv2.destroyAllWindows()
 

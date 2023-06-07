@@ -62,126 +62,126 @@ def main(args):
     loadModel(args.modelpath)
 
 
-    # cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(0)
 
-    # while True:
+    while True:
 
-    #     ret, frame = cap.read()
-    #     if not ret:
-    #         break
+        ret, frame = cap.read()
+        if not ret:
+            break
 
-    #     # Convert the image from BGR color (which OpenCV uses) to RGB color
-    #     rgb_frame = frame[:, :, ::-1]
+        # Convert the image from BGR color (which OpenCV uses) to RGB color
+        rgb_frame = frame[:, :, ::-1]
 
-    #     # Add a new axis to match the input size requirement of the model
-    #     rgb_frame_expanded = np.expand_dims(rgb_frame, axis=0)
+        # Add a new axis to match the input size requirement of the model
+        rgb_frame_expanded = np.expand_dims(rgb_frame, axis=0)
 
-    #     # Run the frame through the model
-    #     output_dict = detection_model(rgb_frame_expanded)
+        # Run the frame through the model
+        output_dict = detection_model(rgb_frame_expanded)
 
-    #     # Detection scores are the detection confidence
-    #     detection_scores = output_dict['detection_scores'][0].numpy()
+        # Detection scores are the detection confidence
+        detection_scores = output_dict['detection_scores'][0].numpy()
 
-    #     # Detection boxes are the coordinates of the detected object
-    #     detection_boxes = output_dict['detection_boxes'][0].numpy()
+        # Detection boxes are the coordinates of the detected object
+        detection_boxes = output_dict['detection_boxes'][0].numpy()
 
-    #     idxmax = np.argmax(detection_scores)
-    #     score = detection_scores[idxmax]
-    #     if score > args.confidence:
-    #         box = detection_boxes[idxmax] * np.array([frame.shape[0], frame.shape[1], frame.shape[0], frame.shape[1]])
+        idxmax = np.argmax(detection_scores)
+        score = detection_scores[idxmax]
+        if score > args.confidence:
+            box = detection_boxes[idxmax] * np.array([frame.shape[0], frame.shape[1], frame.shape[0], frame.shape[1]])
 
-    #         # Get the center of the box
-    #         center_x = (box[1] + box[3]) / 2
-    #         center_y = (box[0] + box[2]) / 2
+            # Get the center of the box
+            center_x = (box[1] + box[3]) / 2
+            center_y = (box[0] + box[2]) / 2
 
-    #         # Get the radius of the circle from the box dimensions
-    #         radius = max((box[3] - box[1]) / 2, (box[2] - box[0]) / 2)
+            # Get the radius of the circle from the box dimensions
+            radius = max((box[3] - box[1]) / 2, (box[2] - box[0]) / 2)
 
-    #         # Draw a circle around the detected object
-    #         cv2.circle(frame, (int(center_x), int(center_y)), int(radius), (0, 255, 0), 2)
+            # Draw a circle around the detected object
+            cv2.circle(frame, (int(center_x), int(center_y)), int(radius), (0, 255, 0), 2)
 
-    #         x, y, z = estimate_position(center_x, center_y, radius, params)
-    #         if z > 0.3: # ignore miss-detections where z is too low
-    #             send_data((x,y,z))
+            x, y, z = estimate_position(center_x, center_y, radius, params)
+            if z > 0.3: # ignore miss-detections where z is too low
+                send_data((x,y,z))
 
-    #     if args.preview:
-    #         cv2.imshow("video", frame)
+        if args.preview:
+            cv2.imshow("video", frame)
 
-    #     if cv2.waitKey(1) == ord('q'):
-    #         break
+        if cv2.waitKey(1) == ord('q'):
+            break
 
 
-    # Create pipeline
-    pipeline = dai.Pipeline()
+    # # Create pipeline
+    # pipeline = dai.Pipeline()
 
-    # Define source and output
-    camRgb = pipeline.create(dai.node.ColorCamera)
-    xoutVideo = pipeline.create(dai.node.XLinkOut)
-    xoutVideo.setStreamName("video")
+    # # Define source and output
+    # camRgb = pipeline.create(dai.node.ColorCamera)
+    # xoutVideo = pipeline.create(dai.node.XLinkOut)
+    # xoutVideo.setStreamName("video")
 
-    # Properties
-    camRgb.setBoardSocket(dai.CameraBoardSocket.RGB)
-    camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
-    camRgb.setVideoSize(params['resolution_x'], params['resolution_y'])
-    camRgb.setFps(60)
-    xoutVideo.input.setBlocking(False)
-    xoutVideo.input.setQueueSize(1)
+    # # Properties
+    # camRgb.setBoardSocket(dai.CameraBoardSocket.RGB)
+    # camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
+    # camRgb.setVideoSize(params['resolution_x'], params['resolution_y'])
+    # camRgb.setFps(60)
+    # xoutVideo.input.setBlocking(False)
+    # xoutVideo.input.setQueueSize(1)
 
-    # Linking
-    camRgb.video.link(xoutVideo.input)
+    # # Linking
+    # camRgb.video.link(xoutVideo.input)
 
-    # Connect to device and start pipeline
-    with dai.Device(pipeline) as device:
+    # # Connect to device and start pipeline
+    # with dai.Device(pipeline) as device:
         
-        video = device.getOutputQueue(name="video", maxSize=1, blocking=False)
+    #     video = device.getOutputQueue(name="video", maxSize=1, blocking=False)
 
-        while True:
+    #     while True:
 
-            videoIn = video.get()
+    #         videoIn = video.get()
 
-            # Get BGR frame from NV12 encoded video frame to show with opencv
-            # Visualizing the frame on slower hosts might have overhead
-            frame = videoIn.getCvFrame()
+    #         # Get BGR frame from NV12 encoded video frame to show with opencv
+    #         # Visualizing the frame on slower hosts might have overhead
+    #         frame = videoIn.getCvFrame()
 
-            # Convert the image from BGR color (which OpenCV uses) to RGB color
-            rgb_frame = frame[:, :, ::-1]
+    #         # Convert the image from BGR color (which OpenCV uses) to RGB color
+    #         rgb_frame = frame[:, :, ::-1]
 
-            # Add a new axis to match the input size requirement of the model
-            rgb_frame_expanded = np.expand_dims(rgb_frame, axis=0)
+    #         # Add a new axis to match the input size requirement of the model
+    #         rgb_frame_expanded = np.expand_dims(rgb_frame, axis=0)
 
-            # Run the frame through the model
-            output_dict = detection_model(rgb_frame_expanded)
+    #         # Run the frame through the model
+    #         output_dict = detection_model(rgb_frame_expanded)
 
-            # Detection scores are the detection confidence
-            detection_scores = output_dict['detection_scores'][0].numpy()
+    #         # Detection scores are the detection confidence
+    #         detection_scores = output_dict['detection_scores'][0].numpy()
 
-            # Detection boxes are the coordinates of the detected object
-            detection_boxes = output_dict['detection_boxes'][0].numpy()
+    #         # Detection boxes are the coordinates of the detected object
+    #         detection_boxes = output_dict['detection_boxes'][0].numpy()
 
-            idxmax = np.argmax(detection_scores)
-            score = detection_scores[idxmax]
-            if score > args.confidence:
-                box = detection_boxes[idxmax] * np.array([frame.shape[0], frame.shape[1], frame.shape[0], frame.shape[1]])
+    #         idxmax = np.argmax(detection_scores)
+    #         score = detection_scores[idxmax]
+    #         if score > args.confidence:
+    #             box = detection_boxes[idxmax] * np.array([frame.shape[0], frame.shape[1], frame.shape[0], frame.shape[1]])
 
-                # Get the center of the box
-                center_x = (box[1] + box[3]) / 2
-                center_y = (box[0] + box[2]) / 2
+    #             # Get the center of the box
+    #             center_x = (box[1] + box[3]) / 2
+    #             center_y = (box[0] + box[2]) / 2
 
-                # Get the radius of the circle from the box dimensions
-                radius = max((box[3] - box[1]) / 2, (box[2] - box[0]) / 2)
+    #             # Get the radius of the circle from the box dimensions
+    #             radius = max((box[3] - box[1]) / 2, (box[2] - box[0]) / 2)
 
-                # Draw a circle around the detected object
-                cv2.circle(frame, (int(center_x), int(center_y)), int(radius), (0, 255, 0), 2)
+    #             # Draw a circle around the detected object
+    #             cv2.circle(frame, (int(center_x), int(center_y)), int(radius), (0, 255, 0), 2)
 
-                x, y, z = estimate_position(center_x, center_y, radius, params)
-                if z > 0.3: # ignore miss-detections where z is too low
-                    send_data((x,y,z))
+    #             x, y, z = estimate_position(center_x, center_y, radius, params)
+    #             if z > 0.3: # ignore miss-detections where z is too low
+    #                 send_data((x,y,z))
 
-            if args.preview:
-                cv2.imshow("video", frame)
+    #         if args.preview:
+    #             cv2.imshow("video", frame)
 
-            if cv2.waitKey(1) == ord('q'):
-                break
+    #         if cv2.waitKey(1) == ord('q'):
+    #             break
 
     cv2.destroyAllWindows()
 
