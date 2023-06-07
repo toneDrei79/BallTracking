@@ -10,7 +10,7 @@ import socket
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--path', type=str, default='/Users/tone/Documents/project/Ball/Assets/coordinates.csv', help='path of the coordinate.csv')
+    parser.add_argument('--modelpath', type=str, default='Data/out3/saved_model', help='path of the object detection model')
     parser.add_argument('--preview', action='store_true', help='preview video')
     parser.add_argument('--calibdata', type=str, default='./calibdata/00/parameters.json', help='path of the calibration data')
     parser.add_argument('--confidence', type=float, default=0.5, help='detection confidence')
@@ -28,10 +28,10 @@ def send_data(position, ip='127.0.0.1', port=12345):
 modelFlag = 0
 detection_model = None
 
-def loadModel():
+def loadModel(path):
     global modelFlag, detection_model
     if not modelFlag:
-        detection_model = tf.saved_model.load('Data/out3/saved_model')
+        detection_model = tf.saved_model.load(path)
         print("Model Loaded")
         modelFlag = 1
 
@@ -49,7 +49,7 @@ def estimate_position(_x, _y, _rad, params):
 
     z = params['a'] / size + params['b']
     x, y, z = perspective((x,y,z), params)
-    print(f'{x:.3f} {y:.3f} {z:.3f}')
+    # print(f'{x:.3f} {y:.3f} {z:.3f}')
 
     return x, y, z
 
@@ -59,7 +59,57 @@ def main(args):
         params = json.load(f)
 
 
-    loadModel()
+    loadModel(args.modelpath)
+
+
+    # cap = cv2.VideoCapture(0)
+
+    # while True:
+
+    #     ret, frame = cap.read()
+    #     if not ret:
+    #         break
+
+    #     # Convert the image from BGR color (which OpenCV uses) to RGB color
+    #     rgb_frame = frame[:, :, ::-1]
+
+    #     # Add a new axis to match the input size requirement of the model
+    #     rgb_frame_expanded = np.expand_dims(rgb_frame, axis=0)
+
+    #     # Run the frame through the model
+    #     output_dict = detection_model(rgb_frame_expanded)
+
+    #     # Detection scores are the detection confidence
+    #     detection_scores = output_dict['detection_scores'][0].numpy()
+
+    #     # Detection boxes are the coordinates of the detected object
+    #     detection_boxes = output_dict['detection_boxes'][0].numpy()
+
+    #     idxmax = np.argmax(detection_scores)
+    #     score = detection_scores[idxmax]
+    #     if score > args.confidence:
+    #         box = detection_boxes[idxmax] * np.array([frame.shape[0], frame.shape[1], frame.shape[0], frame.shape[1]])
+
+    #         # Get the center of the box
+    #         center_x = (box[1] + box[3]) / 2
+    #         center_y = (box[0] + box[2]) / 2
+
+    #         # Get the radius of the circle from the box dimensions
+    #         radius = max((box[3] - box[1]) / 2, (box[2] - box[0]) / 2)
+
+    #         # Draw a circle around the detected object
+    #         cv2.circle(frame, (int(center_x), int(center_y)), int(radius), (0, 255, 0), 2)
+
+    #         x, y, z = estimate_position(center_x, center_y, radius, params)
+    #         if z > 0.3: # ignore miss-detections where z is too low
+    #             send_data((x,y,z))
+
+    #     if args.preview:
+    #         cv2.imshow("video", frame)
+
+    #     if cv2.waitKey(1) == ord('q'):
+    #         break
+
 
     # Create pipeline
     pipeline = dai.Pipeline()
@@ -124,8 +174,8 @@ def main(args):
                 cv2.circle(frame, (int(center_x), int(center_y)), int(radius), (0, 255, 0), 2)
 
                 x, y, z = estimate_position(center_x, center_y, radius, params)
-                
-                send_data((x,y,z))
+                if z > 0.3: # ignore miss-detections where z is too low
+                    send_data((x,y,z))
 
             if args.preview:
                 cv2.imshow("video", frame)
