@@ -1,153 +1,48 @@
+import cv2
+import numpy as np
+import tensorflow as tf
+import depthai as dai
 import os
 import csv
 import json
-import depthai as dai
 import time
-import numpy as np
 import matplotlib.pyplot as plt
-import cv2
-import tensorflow as tf
 import argparse
 
 
 
 def get_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--cameraid', type=int, default=0, help='index of the camera')
+    parser.add_argument('--depthai', action='store_true', help='use DepthAI plugin')
     parser.add_argument('--modelpath', type=str, default='./Data/out3/saved_model', help='path of the object detection model')
-    parser.add_argument('--datadir', type=str, default='./calibdata/00/', help='path of the calibration data')
-    parser.add_argument('--capture', action='store_true', help='strat from capturing images')
     parser.add_argument('--confidence', type=float, default=0.5, help='detection confidence')
+    parser.add_argument('--capture', action='store_true', help='strat from capturing images')
+    parser.add_argument('--datadir', type=str, default='./calibdata/00/', help='path of the calibration data')
     parser.add_argument('--unitwidth', type=float, default=1.2, help='width of view away 1m from camera')
     parser.add_argument('--unitheight', type=float, default=0.8, help='height of view away 1m from camera')
-    parser.add_argument('--resolution_x', type=int, default=1920, help='x resolution')
-    parser.add_argument('--resolution_y', type=int, default=1080, help='y resolution')
     return parser.parse_args()
 
 
-def capture(args, distances=[0.4, 0.6, 0.8, 1.0, 1.2, 1.5, 2.0, 2.5, 3.0]):
-    os.makedirs(args.datadir, exist_ok=True)
+def setup_pipeline():
+    pipeline = dai.Pipeline()
 
+    camRgb = pipeline.create(dai.node.ColorCamera)
+    xoutRgb = pipeline.create(dai.node.XLinkOut)
+    xoutRgb.setStreamName("rgb")
 
-    cap = cv2.VideoCapture(0)
+    camRgb.setPreviewSize(1920, 1080)
+    camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
+    camRgb.setInterleaved(False)
+    camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
+    camRgb.setFps(60)
 
-    def displayFrame(name, frame):
-            cv2.imshow(name, frame)
+    camRgb.preview.link(xoutRgb.input)
     
-    def save(frame, dis):
-        path = os.path.join(args.datadir, f'images/{int(dis*10):02d}.png')
-        cv2.imwrite(path, frame)
-        with open(os.path.join(args.datadir, 'data.csv'), 'a') as f:
-            f.write(f'{path} {dis:.3f}\n')
-        print(f'captured {dis:.3f} m')
-    
-    start_time = time.time()
-    i = 0
-    while i < len(distances):
-
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        # Convert the image from BGR color (which OpenCV uses) to RGB color
-        rgb_frame = frame[:, :, ::-1]
-
-        # Add a new axis to match the input size requirement of the model
-        rgb_frame_expanded = np.expand_dims(rgb_frame, axis=0)
-
-        # Run the frame through the model
-        output_dict = detection_model(rgb_frame_expanded)
-
-        # Detection scores are the detection confidence
-        detection_scores = output_dict['detection_scores'][0].numpy()
-
-        # Detection boxes are the coordinates of the detected object
-        detection_boxes = output_dict['detection_boxes'][0].numpy()
-
-        idxmax = np.argmax(detection_scores)
-        score = detection_scores[idxmax]
-        if score > args.confidence:
-            box = detection_boxes[idxmax] * np.array([frame.shape[0], frame.shape[1], frame.shape[0], frame.shape[1]])
-
-            # Get the center of the box
-            center_x = (box[1] + box[3]) / 2
-            center_y = (box[0] + box[2]) / 2
-
-            # Get the radius of the circle from the box dimensions
-            radius = max((box[3] - box[1]) / 2, (box[2] - box[0]) / 2)
-
-            # Draw a circle around the detected object
-            cv2.circle(frame, (int(center_x), int(center_y)), int(radius), (0, 255, 0), 2)
-
-        displayFrame("rgb", frame)
-
-        elapsed_time = int(time.time() - start_time)
-        if elapsed_time > 5:
-            os.makedirs(os.path.join(args.datadir, 'images/'), exist_ok=True)
-            save(frame, distances[i])
-            start_time = time.time()
-            i += 1
-        
-        if cv2.waitKey(1) == ord('q'):
-            break
+    return pipeline
 
 
-    # # Create pipeline
-    # pipeline = dai.Pipeline()
-
-    # # Define sources and outputs
-    # camRgb = pipeline.create(dai.node.ColorCamera)
-    # xoutRgb = pipeline.create(dai.node.XLinkOut)
-    # xoutRgb.setStreamName("rgb")
-
-    # # Properties
-    # camRgb.setPreviewSize(args.resolution_x, args.resolution_y)
-    # camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
-    # camRgb.setInterleaved(False)
-    # camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
-    # camRgb.setFps(30)
-
-    # # Linking
-    # camRgb.preview.link(xoutRgb.input)
-
-    # # Connect to device and start pipeline
-    # with dai.Device(pipeline) as device:
-
-    #     def displayFrame(name, frame):
-    #         cv2.imshow(name, frame)
-        
-    #     def save(frame, dis):
-    #         path = os.path.join(args.datadir, f'images/{int(dis*10):02d}.png')
-    #         cv2.imwrite(path, frame)
-    #         with open(os.path.join(args.datadir, 'data.csv'), 'a') as f:
-    #             f.write(f'{path} {dis:.3f}\n')
-    #         print(f'captured {dis:.3f} m')
-
-    #     # Output queues will be used to get the rgb frames and nn data from the outputs defined above
-    #     qRgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
-
-    #     start_time = time.time()
-    #     i = 0
-    #     while i < len(distances):
-    #         inRgb = qRgb.tryGet()
-    #         if inRgb is None:
-    #             continue
-    #         frame = inRgb.getCvFrame()
-    #         displayFrame("rgb", frame)
-
-    #         elapsed_time = int(time.time() - start_time)
-    #         if elapsed_time > 5:
-    #             os.makedirs(os.path.join(args.datadir, 'images/'), exist_ok=True)
-    #             save(frame, distances[i])
-    #             start_time = time.time()
-    #             i += 1
-            
-    #         if cv2.waitKey(1) == ord('q'):
-    #             break
-
-        cv2.destroyAllWindows()
-
-    
-# Global Variables
+# global Variables
 modelFlag = 0
 detection_model = None
 
@@ -159,31 +54,88 @@ def loadModel(path):
         modelFlag = 1
 
 
-def detect(image):
-    # Convert the image from BGR color (which OpenCV uses) to RGB color
-    rgb_frame = image[:, :, ::-1]
+def detect_ball(frame, confidence):
+    rgb_frame = frame[:, :, ::-1] # convert the image from BGR to RGB
+    rgb_frame_expanded = np.expand_dims(rgb_frame, axis=0) # add a new axis to match the input size requirement of the model
 
-    # Add a new axis to match the input size requirement of the model
-    rgb_frame_expanded = np.expand_dims(rgb_frame, axis=0)
-
-    # Run the frame through the model
     output_dict = detection_model(rgb_frame_expanded)
 
-    # Detection scores are the detection confidence
     detection_scores = output_dict['detection_scores'][0].numpy()
-
-    # Detection boxes are the coordinates of the detected object
     detection_boxes = output_dict['detection_boxes'][0].numpy()
 
-    idxmax = np.argmax(detection_scores)
-    score = detection_scores[idxmax]
-    if score > args.confidence:
-        box = detection_boxes[idxmax] * np.array([image.shape[0], image.shape[1], image.shape[0], image.shape[1]])
+    most_conf = np.argmax(detection_scores)
+    score = detection_scores[most_conf]
+    if score > confidence:
+        box = detection_boxes[most_conf] * np.array([frame.shape[0], frame.shape[1], frame.shape[0], frame.shape[1]])
+
+        center_x = (box[1] + box[3]) / 2
+        center_y = (box[0] + box[2]) / 2
         radius = max((box[3] - box[1]) / 2, (box[2] - box[0]) / 2)
 
-        return radius
+        cv2.circle(frame, (int(center_x), int(center_y)), int(radius), (0, 255, 0), 2)            
 
-    return -1
+        return frame, radius
+    
+    else:
+        return frame, -1
+
+
+def capture(args, distances=[0.4, 0.6, 0.8, 1.0, 1.2, 1.5, 2.0, 2.5, 3.0]):
+    os.makedirs(args.datadir, exist_ok=True)
+    os.makedirs(os.path.join(args.datadir, 'images/'), exist_ok=True)
+
+    def save(frame, distance):
+        path = os.path.join(args.datadir, f'images/{int(distance*10):02d}.png')
+        cv2.imwrite(path, frame)
+        with open(os.path.join(args.datadir, 'data.csv'), 'a') as f:
+            f.write(f'{path} {distance:.3f}\n')
+        print(f'captured {distance:.3f} m')
+
+    if args.depthai:
+        pipeline = setup_pipeline()
+
+        with dai.Device(pipeline) as device:
+            qRgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False) # output queue will be used to get the rgb frames from the output
+
+            i = 0
+            start_time = time.time()
+            while i < len(distances):
+                inRgb = qRgb.get()  # blocking call, will wait until a new data has arrived
+                frame = inRgb.getCvFrame() # BGR
+
+                elapsed_time = int(time.time() - start_time)
+                if elapsed_time > 5:
+                    save(frame, distances[i])
+                    start_time = time.time()
+                    i += 1
+
+                frame, _ = detect_ball(frame, args.confidence)
+                cv2.imshow("rgb", frame)
+
+                if cv2.waitKey(1) == ord('q'):
+                    break
+    
+    else:
+        cap = cv2.VideoCapture(args.cameraid)
+
+        i = 0
+        start_time = time.time()
+        while i < len(distances):
+            ret, frame = cap.read()
+
+            elapsed_time = int(time.time() - start_time)
+            if elapsed_time > 5:
+                save(frame, distances[i])
+                start_time = time.time()
+                i += 1
+            
+            frame, _ = detect_ball(frame, args.confidence)
+            cv2.imshow('rgb', frame)
+
+            if cv2.waitKey(1) == ord('q'):
+                break
+    
+    cv2.destroyAllWindows()
 
 
 def least_squares(X, Y):
@@ -212,8 +164,6 @@ def main(args):
     
     if args.capture:
         capture(args)
-    
-    # loadModel(args.modelpath)
 
     images = []
     distances = []
@@ -227,7 +177,7 @@ def main(args):
     Y = []
     for i, image in enumerate(images):
         print(i, end=' ')
-        radius = detect(image)
+        _, radius = detect_ball(image, args.confidence)
         resolution = image.shape[:2]
         if radius > 0:
             size = (radius*2) / resolution[0] # != diameter
@@ -243,7 +193,7 @@ def main(args):
         print(f'size:{x:.3f}, distance:{y:.3f}')
 
     a, b = least_squares(X, Y)
-    print(a, b)
+    print(f'a = {a:.5f}, b = {b:.5f}')
 
     sampleX = np.arange(0.05,1,0.01)
     sampleY = np.array([a/x + b for x in sampleX])
@@ -255,10 +205,9 @@ def main(args):
     with open(os.path.join(args.datadir, 'parameters.json'), 'w') as f:
         _data = {'a': a, 'b': b,
                  'width': args.unitwidth, 'height': args.unitheight,
-                 'resolution_x': args.resolution_x, 'resolution_y': args.resolution_y}
+                 'resolution_x': resolution[1], 'resolution_y': resolution[0]}
         json.dump(_data, f)
 
 
 if __name__ == '__main__':
-    args = get_args()
-    main(args)
+    main(get_args())
