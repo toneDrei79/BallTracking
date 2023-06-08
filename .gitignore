@@ -8,3 +8,4 @@ python/data.csv
 python/Figure_1.png
 .DS_Store
 */.DS_Store
+python/calibdata/*
