@@ -9,6 +9,7 @@ public class UDPServer : MonoBehaviour
 {
     UdpClient udpClient;
     IPEndPoint remoteEP;
+    ConcurrentQueue<Vector3> positionQueue = new ConcurrentQueue<Vector3>();
 
     void Start()
     {
@@ -19,7 +20,10 @@ public class UDPServer : MonoBehaviour
 
     void Update()
     {
-
+        if (positionQueue.TryDequeue(out Vector3 newPosition))
+        {
+            this.transform.localPosition = newPosition;
+        }
     }
 
     void OnReceived(System.IAsyncResult result)
