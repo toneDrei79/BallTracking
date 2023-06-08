@@ -33,7 +33,7 @@ def setup_pipeline():
     return pipeline
 
 
-# Global Variables
+# global Variables
 modelFlag = 0
 detection_model = None
 
@@ -45,7 +45,7 @@ def loadModel(path):
         modelFlag = 1
 
 
-def detect_ball(frame):
+def detect_ball(frame, confidence):
     rgb_frame = frame[:, :, ::-1] # convert the image from BGR to RGB
     rgb_frame_expanded = np.expand_dims(rgb_frame, axis=0) # add a new axis to match the input size requirement of the model
 
@@ -56,7 +56,7 @@ def detect_ball(frame):
 
     most_conf = np.argmax(detection_scores)
     score = detection_scores[most_conf]
-    if score > args.confidence:
+    if score > confidence:
         box = detection_boxes[most_conf] * np.array([frame.shape[0], frame.shape[1], frame.shape[0], frame.shape[1]])
 
         center_x = (box[1] + box[3]) / 2
@@ -87,8 +87,7 @@ def main(args):
                 inRgb = qRgb.get()  # blocking call, will wait until a new data has arrived
                 frame = inRgb.getCvFrame() # BGR
 
-                frame = detect_ball(frame)
-
+                frame = detect_ball(frame, args.confidence)
                 cv2.imshow("rgb", frame)
 
                 if cv2.waitKey(1) == ord('q'):
@@ -100,8 +99,7 @@ def main(args):
         while True:
             ret, frame = cap.read()
             
-            frame = detect_ball(frame)
-
+            frame = detect_ball(frame, args.confidence)
             cv2.imshow('rgb', frame)
 
             if cv2.waitKey(1) == ord('q'):
@@ -109,5 +107,4 @@ def main(args):
     
 
 if __name__ == '__main__':
-    args = get_args()
-    main(args)
+    main(get_args())
