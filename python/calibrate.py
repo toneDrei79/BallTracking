@@ -43,9 +43,41 @@ def capture(args, distances=[0.4, 0.6, 0.8, 1.0, 1.2, 1.5, 2.0, 2.5, 3.0]):
     start_time = time.time()
     i = 0
     while i < len(distances):
+
         ret, frame = cap.read()
         if not ret:
             break
+
+        # Convert the image from BGR color (which OpenCV uses) to RGB color
+        rgb_frame = frame[:, :, ::-1]
+
+        # Add a new axis to match the input size requirement of the model
+        rgb_frame_expanded = np.expand_dims(rgb_frame, axis=0)
+
+        # Run the frame through the model
+        output_dict = detection_model(rgb_frame_expanded)
+
+        # Detection scores are the detection confidence
+        detection_scores = output_dict['detection_scores'][0].numpy()
+
+        # Detection boxes are the coordinates of the detected object
+        detection_boxes = output_dict['detection_boxes'][0].numpy()
+
+        idxmax = np.argmax(detection_scores)
+        score = detection_scores[idxmax]
+        if score > args.confidence:
+            box = detection_boxes[idxmax] * np.array([frame.shape[0], frame.shape[1], frame.shape[0], frame.shape[1]])
+
+            # Get the center of the box
+            center_x = (box[1] + box[3]) / 2
+            center_y = (box[0] + box[2]) / 2
+
+            # Get the radius of the circle from the box dimensions
+            radius = max((box[3] - box[1]) / 2, (box[2] - box[0]) / 2)
+
+            # Draw a circle around the detected object
+            cv2.circle(frame, (int(center_x), int(center_y)), int(radius), (0, 255, 0), 2)
+
         displayFrame("rgb", frame)
 
         elapsed_time = int(time.time() - start_time)
@@ -176,10 +208,12 @@ def least_squares(X, Y):
 
 
 def main(args):
+    loadModel(args.modelpath)
+    
     if args.capture:
         capture(args)
     
-    loadModel(args.modelpath)
+    # loadModel(args.modelpath)
 
     images = []
     distances = []

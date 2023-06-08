@@ -49,7 +49,7 @@ def estimate_position(_x, _y, _rad, params):
 
     z = params['a'] / size + params['b']
     x, y, z = perspective((x,y,z), params)
-    # print(f'{x:.3f} {y:.3f} {z:.3f}')
+    print(f'{x:.3f} {y:.3f} {z:.3f}')
 
     return x, y, z
 
@@ -101,8 +101,14 @@ def main(args):
             cv2.circle(frame, (int(center_x), int(center_y)), int(radius), (0, 255, 0), 2)
 
             x, y, z = estimate_position(center_x, center_y, radius, params)
-            if z > 0.3: # ignore miss-detections where z is too low
-                send_data((x,y,z))
+            if z > 0.4: # ignore miss-detections where z is too low
+                # send_data((x,y,z))
+                # send_data((x,y,z), ip='192.168.137.162')
+                # send_data((x,y,z), ip='192.168.137.232')
+                # send_data((x,y,z), ip='192.168.137.49')
+                # send_data((x,y,z), ip='192.168.137.1')
+                # send_data((x,y,z), ip='172.20.10.2')
+                send_data((x,y,z), ip='192.168.137.162')
 
         if args.preview:
             cv2.imshow("video", frame)
